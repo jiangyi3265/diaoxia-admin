@@ -9,6 +9,8 @@ export const verifyXyReservation = (verifyCode) => unwrap(request.post(`/xy/rese
 export const verifyXyMember = (verifyCode) => unwrap(request.post(`/xy/members/verify/${encodeURIComponent(verifyCode)}`))
 export const getXyProducts = () => unwrap(request.get('/xy/products'))
 export const saveXyProduct = (product) => unwrap(product.productId ? request.put('/xy/products', product) : request.post('/xy/products', product))
+export const getXyMemberDiscountSettings = () => unwrap(request.get('/xy/member-discount-settings'))
+export const saveXyMemberDiscountSettings = (data) => unwrap(request.put('/xy/member-discount-settings', data))
 export const getXyReservationConfiguration = () => unwrap(request.get('/xy/reservation-configuration'))
 export const saveXyStore = (data) => unwrap(data.storeId ? request.put('/xy/stores', data) : request.post('/xy/stores', data))
 export const saveXySlot = (data) => unwrap(data.slotId ? request.put('/xy/reservation-slots', data) : request.post('/xy/reservation-slots', data))
