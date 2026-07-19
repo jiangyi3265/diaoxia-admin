@@ -38,11 +38,12 @@
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane label="会员套餐" name="plans">
-        <el-button type="primary" @click="editPlan()">新增套餐</el-button>
-        <el-table :data="plans" empty-text="暂无套餐">
-          <el-table-column prop="planName" label="套餐" /><el-table-column prop="amount" label="售价" />
-          <el-table-column prop="durationDays" label="有效天数" /><el-table-column prop="dailyReservationLimit" label="每日预约上限" />
+      <el-tab-pane v-if="canManagePlans" label="包月会员" name="plans">
+        <el-button type="primary" @click="editPlan()">{{ monthlyPlan ? '编辑包月方案' : '配置包月方案' }}</el-button>
+        <el-alert class="plan-tip" title="小程序仅提供一个30天包月方案，季卡和年卡不再开放。" type="info" :closable="false" />
+        <el-table :data="monthlyPlanRows" empty-text="暂未配置包月方案">
+          <el-table-column prop="planName" label="方案" /><el-table-column prop="amount" label="售价" />
+          <el-table-column label="有效期"><template #default>30天</template></el-table-column>
           <el-table-column label="状态"><template #default="s">{{ s.row.status === '0' ? '上架' : '下架' }}</template></el-table-column>
           <el-table-column label="操作"><template #default="s"><el-button link type="primary" @click="editPlan(s.row)">编辑</el-button></template></el-table-column>
         </el-table>
@@ -64,8 +65,8 @@
       <template #footer><el-button @click="seatDialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="saveSeatForm">保存</el-button></template>
     </el-dialog>
 
-    <el-dialog v-model="planDialog" title="会员套餐" width="500px">
-      <el-form label-width="110px"><el-form-item label="套餐名称"><el-input v-model="plan.planName" /></el-form-item><el-form-item label="售价"><el-input-number v-model="plan.amount" :min="0.01" :precision="2" /></el-form-item><el-form-item label="有效天数"><el-input-number v-model="plan.durationDays" :min="1" /></el-form-item><el-form-item label="每日预约上限"><el-input-number v-model="plan.dailyReservationLimit" :min="1" /></el-form-item><el-form-item label="排序"><el-input-number v-model="plan.sortOrder" :min="0" /></el-form-item><el-form-item label="上架"><el-switch v-model="planEnabled" /></el-form-item></el-form>
+    <el-dialog v-model="planDialog" title="包月会员方案" width="500px">
+      <el-form label-width="110px"><el-form-item label="方案名称"><el-input v-model="plan.planName" /></el-form-item><el-form-item label="售价"><el-input-number v-model="plan.amount" :min="0.01" :precision="2" /></el-form-item><el-form-item label="有效期">支付成功后连续30天有效</el-form-item><el-form-item label="预约规则">同一时间仅保留一条待到场预约，签到后按当天续约规则执行</el-form-item><el-form-item label="排序"><el-input-number v-model="plan.sortOrder" :min="0" /></el-form-item><el-form-item label="上架"><el-switch v-model="planEnabled" /></el-form-item></el-form>
       <template #footer><el-button @click="planDialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="savePlanForm">保存</el-button></template>
     </el-dialog>
   </div>
@@ -75,6 +76,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getXyReservationConfiguration, saveXyPlan, saveXySeat, saveXySlot, saveXyStore } from '@/api/xy'
+import auth from '@/plugins/auth'
 
 const tab = ref('stores'), loading = ref(false), saving = ref(false), storeId = ref()
 const stores = ref([]), slots = ref([]), seats = ref([]), plans = ref([])
@@ -84,25 +86,34 @@ const storeEnabled = ref(true), slotEnabled = ref(true), seatEnabled = ref(true)
 const slotRange = ref(['10:00', '12:00'])
 const filteredSlots = computed(() => slots.value.filter(item => item.storeId === storeId.value))
 const filteredSeats = computed(() => seats.value.filter(item => item.storeId === storeId.value))
+const canManagePlans = computed(() => auth.hasPermi('xy:member:plan'))
+const monthlyPlan = computed(() => plans.value.filter(item => Number(item.durationDays) === 30).sort((a, b) => (a.status === '0' ? -1 : 1) - (b.status === '0' ? -1 : 1))[0] || null)
+const monthlyPlanRows = computed(() => monthlyPlan.value ? [monthlyPlan.value] : [])
 
 async function load() {
   loading.value = true
   try {
     const data = await getXyReservationConfiguration()
-    stores.value = data.stores; slots.value = data.slots; seats.value = data.seats; plans.value = data.plans
+    stores.value = data.stores || []; slots.value = data.slots || []; seats.value = data.seats || []; plans.value = data.plans || []
     if ((!storeId.value || !stores.value.some(item => item.storeId === storeId.value)) && stores.value.length) storeId.value = stores.value[0].storeId
   } finally { loading.value = false }
 }
 function editStore(row = {}) { store.value = { ...row }; storeEnabled.value = row.status !== '1'; storeDialog.value = true }
 function editSlot(row = {}) { slot.value = { sortOrder: 0, ...row }; slotRange.value = row.slotId ? [row.startTime, row.endTime] : ['10:00', '12:00']; slotEnabled.value = row.status !== '1'; slotDialog.value = true }
 function editSeat(row = {}) { seat.value = { sortOrder: 0, ...row }; seatEnabled.value = row.status !== '1'; seatDialog.value = true }
-function editPlan(row = {}) { plan.value = { amount: 0.01, durationDays: 30, dailyReservationLimit: 1, sortOrder: 0, ...row }; planEnabled.value = row.status !== '1'; planDialog.value = true }
+function editPlan(row = monthlyPlan.value || {}) { plan.value = { amount: 0.01, sortOrder: 0, ...row, durationDays: 30, dailyReservationLimit: 1 }; planEnabled.value = row.status !== '1'; planDialog.value = true }
 async function commit(action, close) { saving.value = true; try { await action(); close.value = false; ElMessage.success('已保存'); await load() } finally { saving.value = false } }
 const saveStoreForm = () => commit(() => saveXyStore({ ...store.value, status: storeEnabled.value ? '0' : '1' }), storeDialog)
-const saveSlotForm = () => commit(() => saveXySlot({ ...slot.value, storeId: storeId.value, startTime: slotRange.value[0], endTime: slotRange.value[1], status: slotEnabled.value ? '0' : '1' }), slotDialog)
+const saveSlotForm = () => {
+  if (!Array.isArray(slotRange.value) || slotRange.value.length !== 2) { ElMessage.warning('请选择完整的开始和结束时间'); return }
+  const [startTime, endTime] = slotRange.value
+  const overlaps = filteredSlots.value.some(item => item.status !== '1' && item.slotId !== slot.value.slotId && startTime < item.endTime && endTime > item.startTime)
+  if (overlaps) { ElMessage.warning('该时段与现有预约时段重叠'); return }
+  return commit(() => saveXySlot({ ...slot.value, storeId: storeId.value, startTime, endTime, status: slotEnabled.value ? '0' : '1' }), slotDialog)
+}
 const saveSeatForm = () => commit(() => saveXySeat({ ...seat.value, storeId: storeId.value, status: seatEnabled.value ? '0' : '1' }), seatDialog)
-const savePlanForm = () => commit(() => saveXyPlan({ ...plan.value, status: planEnabled.value ? '0' : '1' }), planDialog)
+const savePlanForm = () => commit(() => saveXyPlan({ ...plan.value, durationDays: 30, dailyReservationLimit: 1, status: planEnabled.value ? '0' : '1' }), planDialog)
 onMounted(load)
 </script>
 
-<style scoped>.page{padding:20px;background:#fff;border-radius:16px}.toolbar{display:flex;gap:12px;margin-bottom:12px}.el-tabs .el-button{margin-bottom:14px}</style>
+<style scoped>.page{padding:20px;background:#fff;border-radius:16px}.toolbar{display:flex;gap:12px;margin-bottom:12px}.el-tabs .el-button{margin-bottom:14px}.plan-tip{margin-bottom:14px}</style>
