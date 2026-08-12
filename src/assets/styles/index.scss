@@ -4,6 +4,16 @@
 @use './sidebar.scss';
 @use './btn.scss';
 @use './ruoyi.scss';
+@use './xiayu.scss';
+
+:root {
+  --app-ink: #17241f;
+  --app-muted: #65766f;
+  --app-line: #e4ece8;
+  --app-surface: #ffffff;
+  --app-canvas: #f3f7f5;
+  --app-accent: #0b887d;
+}
 
 body {
   height: 100%;
@@ -11,7 +21,98 @@ body {
   -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif;
+  color: var(--app-ink);
+  background: var(--app-canvas);
+  font-family: "Segoe UI Variable", "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(11, 136, 125, 0.24);
+  outline-offset: 2px;
+}
+
+/* 系统管理与监控页面的统一商用基线 */
+.app-container {
+  --el-color-primary: #0b887d;
+  --el-color-primary-light-9: #eaf6f3;
+  --el-color-primary-dark-2: #086d64;
+  --el-border-radius-base: 9px;
+}
+
+.app-container > .el-form--inline:first-child {
+  margin-bottom: 16px;
+  padding: 17px 18px 0;
+  border: 1px solid var(--app-line);
+  border-radius: 15px;
+  background: var(--app-surface);
+  box-shadow: 0 7px 22px rgba(22, 70, 63, .045);
+}
+
+.app-container .el-button,
+.app-container .el-input__wrapper,
+.app-container .el-select__wrapper,
+.app-container .el-textarea__inner,
+.app-container .el-card {
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 150ms ease, background-color 180ms ease;
+}
+
+.app-container .el-button:not(.is-disabled):active { transform: translateY(1px) scale(.985); }
+.app-container .el-button:focus-visible,
+.app-container a:focus-visible { outline: 3px solid rgba(11, 136, 125, .24); outline-offset: 2px; }
+
+.app-container .el-table {
+  overflow: hidden;
+  border: 1px solid var(--app-line);
+  border-radius: 14px;
+  background: var(--app-surface);
+  --el-table-header-bg-color: #f5f8f7;
+  --el-table-row-hover-bg-color: #f1f8f5;
+  --el-table-border-color: #eaf0ed;
+}
+
+.app-container .el-table th.el-table__cell {
+  height: 47px !important;
+  background: #f5f8f7 !important;
+  color: #50625b;
+  font-size: 12px;
+  font-weight: 680;
+  letter-spacing: .015em;
+}
+
+.app-container .el-table td.el-table__cell { padding: 12px 0; }
+.app-container .el-empty { padding: 36px 0; }
+.app-container .el-empty__description p { color: #82918b; font-size: 13px; }
+.app-container .el-card { border-color: var(--app-line); border-radius: 15px; box-shadow: 0 8px 24px rgba(22, 70, 63, .05); }
+
+.el-message-box,
+.el-dialog:not(.is-fullscreen) { max-width: calc(100vw - 28px); border-radius: 16px; }
+
+.el-message-box__btns .el-button--primary,
+.el-dialog .el-button--primary {
+  --el-button-bg-color: #0b887d;
+  --el-button-border-color: #0b887d;
+  --el-button-hover-bg-color: #08796f;
+  --el-button-hover-border-color: #08796f;
+}
+
+@media (max-width: 768px) {
+  .app-container > .el-form--inline:first-child { display: grid; padding: 14px 14px 2px; }
+  .app-container > .el-form--inline:first-child .el-form-item,
+  .app-container > .el-form--inline:first-child .el-input,
+  .app-container > .el-form--inline:first-child .el-select,
+  .app-container > .el-form--inline:first-child .el-date-editor { width: 100% !important; margin-right: 0; }
+  .app-container .el-dialog__body { max-height: 64dvh; overflow-y: auto; }
 }
 
 label {
@@ -122,7 +223,16 @@ aside {
 
 //main-container全局样式
 .app-container {
-  padding: 20px;
+  width: min(100%, 1480px);
+  min-height: calc(100vh - 126px);
+  margin: 0 auto;
+  padding: 24px clamp(16px, 2.5vw, 32px) 40px;
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 16px 12px 28px;
+  }
 }
 
 .components-container {

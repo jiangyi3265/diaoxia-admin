@@ -1,29 +1,70 @@
 <template>
-  <div class="dashboard">
-    <div class="header"><div><h2>运营数据看板</h2><p>所有数据来自已登录的运营接口。</p></div><el-button :loading="loading" @click="load">刷新数据</el-button></div>
-    <div class="grid">
-      <div v-for="item in cards" :key="item.label" class="card"><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
-    </div>
-    <el-empty v-if="!loading && cards.every(item => Number(item.value) === 0)" description="暂无业务数据，请先在座位时段页配置门店、套餐和座位。" />
+  <div class="xy-page">
+    <section class="xy-page-hero" aria-labelledby="dashboard-title">
+      <div class="xy-page-copy">
+        <span class="xy-kicker">经营总览</span>
+        <h2 id="dashboard-title" class="xy-page-title">今天的经营情况，一眼看清</h2>
+        <p class="xy-page-description">汇总今日预约、有效会员、待处理订单和实收金额。数据来自正式运营接口，刷新后即时更新。</p>
+      </div>
+      <div class="xy-page-actions">
+        <el-button :loading="loading" @click="load">刷新数据</el-button>
+      </div>
+    </section>
+
+    <section class="xy-stat-grid" aria-label="核心经营指标">
+      <article v-for="item in cards" :key="item.label" class="xy-stat">
+        <span class="xy-stat-label">{{ item.label }}</span>
+        <strong class="xy-stat-value">{{ item.prefix }}{{ formatValue(item.value) }}</strong>
+        <span class="xy-stat-note">{{ item.note }}</span>
+      </article>
+    </section>
+
+    <section class="xy-section xy-section-pad">
+      <div class="readiness">
+        <div>
+          <span class="readiness-label">运营准备度</span>
+          <h3>基础资料与业务数据</h3>
+          <p>完成门店、预约时段、座位和会员方案配置后，小程序即可展示可预约资源。</p>
+        </div>
+        <el-button type="primary" plain @click="router.push('/xiayu/seats')">前往配置</el-button>
+      </div>
+      <el-empty v-if="!loading && isEmpty" description="当前还没有业务数据，请先完成门店与座位时段配置。">
+        <el-button type="primary" @click="router.push('/xiayu/seats')">配置经营资料</el-button>
+      </el-empty>
+      <div v-else class="xy-inline-note">待支付订单会保留在业务统计中。当前未接入微信支付，线下收款请到“商城管理 → 线下收款”处理。</div>
+    </section>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { getXyDashboard } from '@/api/xy'
 
+const router = useRouter()
 const loading = ref(false)
 const summary = ref({ todayReservations: 0, activeMembers: 0, pendingOrders: 0, todayPaidAmount: 0 })
 const cards = computed(() => [
-  { label: '今日预约', value: summary.value.todayReservations },
-  { label: '有效会员', value: summary.value.activeMembers },
-  { label: '待支付订单', value: summary.value.pendingOrders },
-  { label: '今日实收（元）', value: summary.value.todayPaidAmount }
+  { label: '今日预约', value: summary.value.todayReservations, prefix: '', note: '今天已提交的预约' },
+  { label: '有效会员', value: summary.value.activeMembers, prefix: '', note: '当前仍在有效期内' },
+  { label: '待支付订单', value: summary.value.pendingOrders, prefix: '', note: '需要跟进线下收款' },
+  { label: '今日实收', value: summary.value.todayPaidAmount, prefix: '¥', note: '今日已确认收款金额' }
 ])
-async function load() { loading.value = true; try { summary.value = await getXyDashboard() } finally { loading.value = false } }
+const isEmpty = computed(() => cards.value.every(item => Number(item.value) === 0))
+const formatValue = value => Number(value || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+
+async function load() {
+  loading.value = true
+  try { summary.value = await getXyDashboard() } finally { loading.value = false }
+}
 onMounted(load)
 </script>
 
 <style scoped>
-.header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }.header h2 { margin:0; color:#142320; }.header p { color:#6a7d79; }.grid { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }.card { padding:24px; border-radius:16px; background:#fff; box-shadow:0 4px 18px rgba(16,78,74,.08); }.card span { color:#6a7d79; }.card strong { display:block; margin-top:14px; font-size:32px; color:#0e9c8e; } @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+.readiness { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.readiness-label { color: var(--xy-primary-deep); font-size: 11px; font-weight: 700; letter-spacing: .1em; }
+.readiness h3 { margin: 5px 0 6px; color: var(--xy-ink); font-size: 17px; }
+.readiness p { max-width: 62ch; margin: 0; color: var(--xy-ink-3); font-size: 12px; line-height: 1.7; }
+.xy-inline-note { margin-top: 20px; }
+@media (max-width: 640px) { .readiness { align-items: flex-start; flex-direction: column; } }
 </style>

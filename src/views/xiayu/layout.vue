@@ -1,21 +1,25 @@
 <template>
   <div class="xy-admin">
+    <a class="xy-skip-link" href="#xy-main-content">跳到主要内容</a>
+    <button v-if="mobileNavOpen" class="xy-side-backdrop" type="button" aria-label="关闭导航" @click="mobileNavOpen = false" />
     <!-- 侧边栏 -->
-    <aside class="xy-side">
+    <aside id="xy-navigation" class="xy-side" :class="{ 'is-open': mobileNavOpen }" aria-label="运营后台导航">
       <div class="xy-brand">
         <div class="xy-brand-mark"><xy-icon name="fish" :size="26" :weight="1.7" /></div>
         <div class="xy-brand-txt">
-          <span class="xy-brand-name">虾语 · 后台</span>
-          <span class="xy-brand-sub">XIAYU MERCHANT</span>
+          <span class="xy-brand-name">虾语</span>
+          <span class="xy-brand-sub">钓虾生活馆运营后台</span>
         </div>
       </div>
 
       <nav class="xy-nav">
         <div class="xy-nav-group" v-for="g in nav" :key="g.group">
           <div class="xy-nav-label">{{ g.group }}</div>
-          <div
+          <button
             class="xy-nav-item"
             :class="{ on: active === it.key }"
+            type="button"
+            :aria-current="active === it.key ? 'page' : undefined"
             v-for="it in g.items"
             :key="it.key"
             @click="go(it.key)"
@@ -23,7 +27,7 @@
             <xy-icon :name="it.icon" :size="19" :weight="active === it.key ? 2 : 1.7" />
             <span>{{ it.label }}</span>
             <span v-if="it.badge" class="xy-nav-badge">{{ it.badge }}</span>
-          </div>
+          </button>
         </div>
       </nav>
 
@@ -34,7 +38,9 @@
             <span class="xy-acc-name">{{ userName }}</span>
             <span class="xy-acc-role">{{ roleText }}</span>
           </div>
-          <xy-icon name="logout" :size="18" :weight="1.7" class="xy-acc-out" @click="logout" />
+          <button class="xy-acc-out" type="button" aria-label="退出登录" @click="logout">
+            <xy-icon name="logout" :size="18" :weight="1.7" />
+          </button>
         </div>
       </div>
     </aside>
@@ -43,11 +49,16 @@
     <div class="xy-main">
       <header class="xy-top">
         <div class="xy-top-left">
+          <button class="xy-mobile-menu xy-icon-button" type="button" aria-label="打开导航" aria-controls="xy-navigation" :aria-expanded="mobileNavOpen" @click="mobileNavOpen = true">
+            <span></span><span></span><span></span>
+          </button>
+          <div>
           <h1 class="xy-top-title">{{ title }}</h1>
           <div class="xy-crumb">
             <span>虾语生活馆</span>
             <xy-icon name="chevron-right" :size="14" :weight="2" />
             <span class="on">{{ title }}</span>
+          </div>
           </div>
         </div>
         <div class="xy-top-right">
@@ -61,7 +72,7 @@
         </div>
       </header>
 
-      <main class="xy-content">
+      <main id="xy-main-content" class="xy-content" tabindex="-1">
         <router-view v-slot="{ Component }">
           <transition name="xy-fade" mode="out-in">
             <component :is="Component" />
@@ -73,7 +84,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import auth from '@/plugins/auth'
 import useUserStore from '@/store/modules/user'
@@ -82,6 +93,7 @@ import XyIcon from './XyIcon.vue'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const mobileNavOpen = ref(false)
 
 const allNav = [
   { group: '经营概览', items: [
@@ -121,6 +133,7 @@ const active = computed(() => {
 const title = computed(() => titleMap[active.value] || '数据看板')
 
 function go(key) {
+  mobileNavOpen.value = false
   router.push('/xiayu/' + key)
 }
 
@@ -159,11 +172,20 @@ async function logout() {
   --el-border-radius-base: 10px;
 
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--xy-bg);
   color: var(--xy-ink);
   font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
 }
+
+.xy-skip-link {
+  position: fixed; left: 16px; top: 12px; z-index: 100;
+  padding: 9px 14px; border-radius: 9px; background: #fff; color: var(--xy-primary-deep);
+  font-size: 13px; font-weight: 700; box-shadow: 0 8px 24px rgba(8,45,41,.18);
+  transform: translateY(-150%); transition: transform .16s ease;
+}
+.xy-skip-link:focus { transform: translateY(0); }
+.xy-side-backdrop { display: none; }
 
 /* 侧边栏 */
 .xy-side {
@@ -176,6 +198,11 @@ async function logout() {
   position: sticky;
   top: 0;
   height: 100vh;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  line-height: normal;
+  z-index: 40;
 }
 .xy-brand { display: flex; align-items: center; gap: 12px; padding: 24px 22px 22px; }
 .xy-brand-mark {
@@ -192,6 +219,7 @@ async function logout() {
 .xy-nav-group { margin-bottom: 14px; }
 .xy-nav-label { font-size: 11px; color: rgba(255,255,255,0.36); letter-spacing: 1px; padding: 10px 12px 8px; font-weight: 600; }
 .xy-nav-item {
+  width: 100%; border: 0; text-align: left;
   display: flex; align-items: center; gap: 12px;
   height: 46px; padding: 0 14px; border-radius: 12px;
   color: rgba(255,255,255,0.68); font-size: 14.5px; cursor: pointer;
@@ -220,7 +248,7 @@ async function logout() {
 .xy-acc-txt { flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .xy-acc-name { font-size: 13.5px; color: #fff; font-weight: 600; }
 .xy-acc-role { font-size: 11px; color: rgba(255,255,255,0.44); }
-.xy-acc-out { color: rgba(255,255,255,0.5); cursor: pointer; }
+.xy-acc-out { display: grid; place-items: center; padding: 6px; border: 0; border-radius: 8px; background: transparent; color: rgba(255,255,255,0.5); cursor: pointer; }
 .xy-acc-out:hover { color: #fff; }
 
 /* 主区 */
@@ -235,6 +263,8 @@ async function logout() {
   position: sticky; top: 0; z-index: 20;
 }
 .xy-top-title { font-size: 21px; font-weight: 800; color: var(--xy-ink); margin: 0; letter-spacing: 0.3px; }
+.xy-top-left { display: flex; align-items: center; gap: 12px; }
+.xy-mobile-menu { display: none; }
 .xy-crumb { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 12px; color: var(--xy-muted); }
 .xy-crumb .on { color: var(--xy-primary-deep); font-weight: 600; }
 .xy-top-right { display: flex; align-items: center; gap: 14px; }
@@ -262,6 +292,34 @@ async function logout() {
 .xy-fade-enter-active, .xy-fade-leave-active { transition: opacity 0.2s, transform 0.2s; }
 .xy-fade-enter-from { opacity: 0; transform: translateY(8px); }
 .xy-fade-leave-to { opacity: 0; }
+
+@media (max-width: 980px) {
+  .xy-side {
+    position: fixed; left: 0; top: 0; height: 100dvh;
+    transform: translateX(-102%); transition: transform .24s cubic-bezier(.22,.8,.28,1);
+    box-shadow: 22px 0 50px rgba(4,31,29,.24);
+  }
+  .xy-side.is-open { transform: translateX(0); }
+  .xy-side-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 35; border: 0;
+    background: rgba(8,30,29,.38); backdrop-filter: blur(2px);
+  }
+  .xy-mobile-menu {
+    display: grid; gap: 4px; width: 38px; height: 38px; padding: 10px;
+    border: 1px solid var(--xy-hairline); border-radius: 10px; background: #fff;
+  }
+  .xy-mobile-menu span { display: block; width: 100%; height: 2px; border-radius: 2px; background: var(--xy-ink-2); }
+  .xy-top { padding: 0 20px; }
+  .xy-content { padding: 20px; }
+}
+
+@media (max-width: 640px) {
+  .xy-top { height: 66px; padding: 0 14px; }
+  .xy-top-title { font-size: 18px; }
+  .xy-crumb, .xy-top-acc-txt { display: none; }
+  .xy-top-avatar { width: 36px; height: 36px; }
+  .xy-content { padding: 12px 12px 28px; }
+}
 </style>
 
 <style>

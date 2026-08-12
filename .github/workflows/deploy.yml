@@ -52,3 +52,11 @@ jobs:
             "$DEPLOY_USER@$DEPLOY_HOST:/home/deploy/releases/diaoxia-admin.tgz.upload"
           ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
             "mv /home/deploy/releases/diaoxia-admin.tgz.upload /home/deploy/releases/diaoxia-admin.tgz && sudo /usr/local/sbin/deploy-diaoxia-admin"
+
+      - name: Verify public admin
+        run: |
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 \
+            https://diaoxht.daioxia.cn/login -o /tmp/admin-login.html
+          grep -qi '<!doctype html>' /tmp/admin-login.html
+          curl --fail --silent --show-error --retry 6 --retry-delay 5 \
+            https://diaox.daioxia.cn/app/payment-settings -o /dev/null

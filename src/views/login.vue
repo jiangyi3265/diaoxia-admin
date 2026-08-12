@@ -1,67 +1,80 @@
 <template>
-  <div class="login">
-    <el-form ref="loginRef" :model="loginForm" :rules="loginRules" class="login-form">
-      <h3 class="title">{{ title }}</h3>
-      <el-form-item prop="username">
+  <main class="login">
+    <section class="brand-panel" aria-label="虾语品牌介绍">
+      <div class="brand-content">
+        <span class="brand-kicker">XIAYU MERCHANT</span>
+        <h1>虾语<br><em>钓虾生活馆</em></h1>
+        <p>管理门店预约、会员权益、商城订单与线下收款，让每一笔业务都有记录、可核对。</p>
+        <div class="brand-points"><span>预约到店</span><span>会员运营</span><span>线下收款</span></div>
+      </div>
+      <div class="brand-foot">钓虾生活馆运营后台</div>
+    </section>
+
+    <section class="form-panel">
+    <el-form ref="loginRef" :model="loginForm" :rules="loginRules" class="login-form" aria-labelledby="login-title">
+      <div class="mobile-brand"><strong>虾语</strong><span>钓虾生活馆</span></div>
+      <span class="form-kicker">运营人员登录</span>
+      <h2 id="login-title" class="title">欢迎回来</h2>
+      <p class="subtitle">请使用管理员分配的账号进入后台。</p>
+      <el-form-item prop="username" label="账号">
         <el-input
           v-model="loginForm.username"
           type="text"
           size="large"
           auto-complete="off"
-          placeholder="账号"
+          placeholder="请输入登录账号"
         >
           <template #prefix><svg-icon icon-class="user" class="el-input__icon input-icon" /></template>
         </el-input>
       </el-form-item>
-      <el-form-item prop="password">
+      <el-form-item prop="password" label="密码">
         <el-input
           v-model="loginForm.password"
           type="password"
           size="large"
           auto-complete="off"
-          placeholder="密码"
+          placeholder="请输入登录密码"
           @keyup.enter="handleLogin"
         >
           <template #prefix><svg-icon icon-class="password" class="el-input__icon input-icon" /></template>
         </el-input>
       </el-form-item>
-      <el-form-item prop="code" v-if="captchaEnabled">
-        <el-input
+      <el-form-item prop="code" label="验证码" v-if="captchaEnabled">
+        <div class="captcha-row"><el-input
           v-model="loginForm.code"
           size="large"
           auto-complete="off"
           placeholder="验证码"
-          style="width: 63%"
+          class="captcha-input"
           @keyup.enter="handleLogin"
         >
           <template #prefix><svg-icon icon-class="validCode" class="el-input__icon input-icon" /></template>
         </el-input>
-        <div class="login-code">
-          <img :src="codeUrl" alt="点击刷新验证码" @click="getCode" class="login-code-img"/>
-        </div>
+        <button class="login-code" type="button" title="看不清，换一张" @click="getCode">
+          <img :src="codeUrl" alt="验证码，点击刷新" class="login-code-img"/>
+        </button></div>
       </el-form-item>
-      <el-checkbox v-model="loginForm.rememberMe" style="margin:0px 0px 25px 0px;">记住密码</el-checkbox>
-      <el-form-item style="width:100%;">
+      <div class="login-options"><el-checkbox v-model="loginForm.rememberMe">记住登录信息</el-checkbox><span>仅建议在个人设备使用</span></div>
+      <el-form-item class="submit-item">
         <el-button
           :loading="loading"
           size="large"
           type="primary"
-          style="width:100%;"
+          class="submit-button"
           @click.prevent="handleLogin"
         >
-          <span v-if="!loading">登 录</span>
-          <span v-else>登 录 中...</span>
+          <span v-if="!loading">进入运营后台</span>
+          <span v-else>正在验证...</span>
         </el-button>
         <div style="float: right;" v-if="register">
           <router-link class="link-type" :to="'/register'">立即注册</router-link>
         </div>
       </el-form-item>
+      <p class="security-note">系统会记录关键经营操作。请妥善保管账号，不要与他人共用。</p>
     </el-form>
-    <!--  底部  -->
-    <div class="el-login-footer">
-      <span>{{ footerContent }}</span>
-    </div>
-  </div>
+    <footer class="el-login-footer"><span>{{ footerContent }}</span></footer>
+    </section>
+  </main>
 </template>
 
 <script setup>
@@ -71,7 +84,6 @@ import { encrypt, decrypt } from "@/utils/jsencrypt"
 import useUserStore from '@/store/modules/user'
 import defaultSettings from '@/settings'
 
-const title = import.meta.env.VITE_APP_TITLE
 const footerContent = defaultSettings.footerContent
 const userStore = useUserStore()
 const route = useRoute()
@@ -167,30 +179,62 @@ getCookie()
 
 <style lang='scss' scoped>
 .login {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.15fr) minmax(460px, .85fr);
+  min-height: 100dvh;
+  overflow: auto;
+  background: #f4f7f5;
+}
+.brand-panel {
+  position: relative;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: clamp(34px, 5vw, 72px);
+  background:
+    linear-gradient(150deg, rgba(9, 46, 43, .9), rgba(7, 59, 60, .84)),
+    url("../assets/images/login-background.jpg") center/cover;
+  color: #fff;
+}
+.brand-panel::before { position: absolute; inset: 0; background: radial-gradient(circle at 70% 18%, rgba(64, 211, 192, .2), transparent 28%); content: ""; }
+.brand-panel::after { position: absolute; right: -110px; bottom: 8%; width: 360px; height: 360px; border: 64px solid rgba(255,255,255,.045); border-radius: 50%; content: ""; }
+.brand-content, .brand-foot { position: relative; z-index: 1; }
+.brand-content { align-self: center; width: min(100%, 610px); margin: auto 0; }
+.brand-kicker { color: #80d8cc; font-size: 11px; font-weight: 750; letter-spacing: .22em; }
+.brand-content h1 { margin: 22px 0 24px; font-size: clamp(50px, 6vw, 86px); font-weight: 790; line-height: .98; letter-spacing: -.06em; }
+.brand-content h1 em { color: #d6f2ed; font-size: .48em; font-style: normal; font-weight: 580; letter-spacing: -.025em; }
+.brand-content p { max-width: 48ch; margin: 0; color: rgba(255,255,255,.66); font-size: 14px; line-height: 1.85; }
+.brand-points { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+.brand-points span { padding: 7px 10px; border: 1px solid rgba(255,255,255,.14); border-radius: 7px; background: rgba(255,255,255,.055); color: rgba(255,255,255,.76); font-size: 11px; }
+.brand-foot { color: rgba(255,255,255,.42); font-size: 11px; letter-spacing: .1em; }
+.form-panel {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  height: 100%;
-  background-image: url("../assets/images/login-background.jpg");
-  background-size: cover;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 42px clamp(28px, 6vw, 84px) 24px;
 }
 .title {
-  margin: 0px auto 30px auto;
-  text-align: center;
-  color: #707070;
+  margin: 8px 0 0;
+  color: #15241f;
+  font-size: 34px;
+  font-weight: 760;
+  line-height: 1.2;
+  letter-spacing: -.035em;
 }
-
 .login-form {
-  border-radius: 6px;
-  background: #ffffff;
-  width: 400px;
-  padding: 25px 25px 5px 25px;
+  width: min(100%, 420px);
+  padding: 0;
   z-index: 1;
+  .el-form-item { margin-bottom: 22px; }
+  :deep(.el-form-item__label) { height: auto; margin-bottom: 7px; color: #3f514a; font-size: 12px; font-weight: 650; line-height: 1.3; }
   .el-input {
-    height: 40px;
-    input {
-      height: 40px;
-    }
+    height: 46px;
+    :deep(.el-input__wrapper) { border-radius: 11px; box-shadow: 0 0 0 1px #dfe8e4 inset; }
+    :deep(.el-input__wrapper.is-focus) { box-shadow: 0 0 0 1px #0e9c8e inset, 0 0 0 4px rgba(14,156,142,.09); }
   }
   .input-icon {
     height: 39px;
@@ -198,34 +242,49 @@ getCookie()
     margin-left: 0px;
   }
 }
-.login-tip {
-  font-size: 13px;
-  text-align: center;
-  color: #bfbfbf;
-}
+.form-kicker { color: #0a7d72; font-size: 11px; font-weight: 750; letter-spacing: .12em; }
+.subtitle { margin: 9px 0 30px; color: #71827b; font-size: 13px; line-height: 1.6; }
+.mobile-brand { display: none; }
+.captcha-row { display: flex; width: 100%; gap: 10px; }.captcha-input { flex: 1; min-width: 0; }
 .login-code {
-  width: 33%;
-  height: 40px;
-  float: right;
+  flex: 0 0 120px;
+  height: 46px;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid #dfe8e4;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
   img {
-    cursor: pointer;
-    vertical-align: middle;
+    display: block;
   }
 }
+.login-options { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -2px 0 22px; }.login-options span { color: #97a59f; font-size: 11px; }
+.submit-item { width: 100%; margin-bottom: 0 !important; }.submit-button { width: 100%; height: 46px; border-radius: 11px; background: #0b887d; border-color: #0b887d; font-weight: 680; box-shadow: 0 8px 20px rgba(11,136,125,.2); }.submit-button:hover { background: #08796f; border-color: #08796f; }
+.security-note { margin: 18px 0 0; color: #9aa6a1; font-size: 11px; line-height: 1.65; text-align: center; }
 .el-login-footer {
-  height: 40px;
-  line-height: 40px;
-  position: fixed;
-  bottom: 0;
-  width: 100%;
+  width: min(100%, 420px);
+  margin-top: 48px;
   text-align: center;
-  color: #fff;
-  font-family: Arial;
-  font-size: 12px;
-  letter-spacing: 1px;
+  color: #9ba7a2;
+  font-size: 11px;
 }
 .login-code-img {
-  height: 40px;
-  padding-left: 12px;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (max-width: 900px) {
+  .login { grid-template-columns: 1fr; }
+  .brand-panel { display: none; }
+  .form-panel { min-height: 100dvh; justify-content: flex-start; padding: 48px 22px 24px; }
+  .mobile-brand { display: flex; align-items: baseline; gap: 8px; margin-bottom: 46px; color: #0b887d; }.mobile-brand strong { font-size: 22px; }.mobile-brand span { color: #71827b; font-size: 12px; }
+  .el-login-footer { margin-top: auto; padding-top: 42px; }
+}
+@media (max-width: 420px) {
+  .form-panel { padding-top: 28px; }
+  .mobile-brand { margin-bottom: 32px; }
+  .captcha-row { align-items: stretch; }.login-code { flex-basis: 104px; }
+  .login-options { align-items: flex-start; flex-direction: column; gap: 6px; }
 }
 </style>
