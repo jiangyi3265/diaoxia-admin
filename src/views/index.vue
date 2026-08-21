@@ -1,7 +1,7 @@
 <template>
   <main class="app-container home-entry">
     <section v-if="redirecting" class="entry-card" aria-live="polite">
-      <span class="entry-mark">虾语</span>
+      <span class="entry-mark">成泰</span>
       <h1>正在进入运营工作台</h1>
       <p>系统正在根据你的账号权限打开可用的业务页面。</p>
       <el-skeleton :rows="3" animated />

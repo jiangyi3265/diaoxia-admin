@@ -52,6 +52,6 @@ export default {
   /**
    * 底部版权文本内容
    */
-  footerContent: 'Copyright © 2026 钓虾生活馆'
+  footerContent: 'Copyright © 2026 成泰钓虾俱乐部'
 }
 

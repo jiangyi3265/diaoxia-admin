@@ -1,18 +1,18 @@
 <template>
   <main class="login">
-    <section class="brand-panel" aria-label="虾语品牌介绍">
+    <section class="brand-panel" aria-label="成泰钓虾俱乐部品牌介绍">
       <div class="brand-content">
         <span class="brand-kicker">XIAYU MERCHANT</span>
-        <h1>虾语<br><em>钓虾生活馆</em></h1>
+        <h1>成泰<br><em>钓虾俱乐部</em></h1>
         <p>管理门店预约、会员权益、商城订单与线下收款，让每一笔业务都有记录、可核对。</p>
         <div class="brand-points"><span>预约到店</span><span>会员运营</span><span>线下收款</span></div>
       </div>
-      <div class="brand-foot">钓虾生活馆运营后台</div>
+      <div class="brand-foot">钓虾俱乐部运营后台</div>
     </section>
 
     <section class="form-panel">
     <el-form ref="loginRef" :model="loginForm" :rules="loginRules" class="login-form" aria-labelledby="login-title">
-      <div class="mobile-brand"><strong>虾语</strong><span>钓虾生活馆</span></div>
+      <div class="mobile-brand"><strong>成泰</strong><span>钓虾俱乐部</span></div>
       <span class="form-kicker">运营人员登录</span>
       <h2 id="login-title" class="title">欢迎回来</h2>
       <p class="subtitle">请使用管理员分配的账号进入后台。</p>

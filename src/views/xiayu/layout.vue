@@ -7,8 +7,8 @@
       <div class="xy-brand">
         <div class="xy-brand-mark"><xy-icon name="fish" :size="26" :weight="1.7" /></div>
         <div class="xy-brand-txt">
-          <span class="xy-brand-name">虾语</span>
-          <span class="xy-brand-sub">钓虾生活馆运营后台</span>
+          <span class="xy-brand-name">成泰</span>
+          <span class="xy-brand-sub">钓虾俱乐部运营后台</span>
         </div>
       </div>
 
@@ -55,7 +55,7 @@
           <div>
           <h1 class="xy-top-title">{{ title }}</h1>
           <div class="xy-crumb">
-            <span>虾语生活馆</span>
+            <span>成泰钓虾俱乐部</span>
             <xy-icon name="chevron-right" :size="14" :weight="2" />
             <span class="on">{{ title }}</span>
           </div>

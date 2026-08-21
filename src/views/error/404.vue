@@ -1,7 +1,7 @@
 <template>
   <main class="error-page">
     <section class="error-card" aria-labelledby="error-title">
-      <div class="brand"><strong>虾语</strong><span>钓虾生活馆运营后台</span></div>
+      <div class="brand"><strong>成泰</strong><span>钓虾俱乐部运营后台</span></div>
       <div class="error-number" aria-hidden="true">404</div>
       <span class="error-code">PAGE NOT FOUND</span>
       <h1 id="error-title">这个页面不存在</h1>

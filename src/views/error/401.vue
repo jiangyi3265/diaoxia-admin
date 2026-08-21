@@ -1,7 +1,7 @@
 <template>
   <main class="error-page">
     <section class="error-card" aria-labelledby="error-title">
-      <div class="brand"><strong>虾语</strong><span>钓虾生活馆运营后台</span></div>
+      <div class="brand"><strong>成泰</strong><span>钓虾俱乐部运营后台</span></div>
       <span class="error-code">401 · ACCESS DENIED</span>
       <h1 id="error-title">当前账号没有访问权限</h1>
       <p>该页面超出了当前角色的授权范围。如确需使用，请联系管理员分配对应业务权限。</p>
