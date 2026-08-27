@@ -7,6 +7,7 @@
         <p class="xy-page-description">在独立财务入口核对每一笔付款、关闭未到账申请，并完成已实际退回的线下退款。所有关键操作都需要再次核对支付单、业务单和会员手机。</p>
       </div>
       <div class="xy-page-actions">
+        <el-button v-hasPermi="['xy:finance:view']" type="primary" @click="handleExport">导出 Excel</el-button>
         <el-button :loading="loading || offlineLoading" @click="loadAll">刷新财务数据</el-button>
       </div>
     </section>
@@ -71,12 +72,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, getCurrentInstance, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { closeXyOfflinePayment, completeXyOfflineRefund, confirmXyOfflinePayment, getXyFinance, getXyOfflinePayments } from '@/api/xy'
 import { paymentConfirmMessage } from './payment-confirm'
 
 const rows = ref([])
+const { proxy } = getCurrentInstance()
 const offlinePayments = ref([])
 const loading = ref(false)
 const offlineLoading = ref(false)
@@ -128,6 +130,13 @@ async function loadOfflinePayments() {
 }
 
 async function loadAll() { await Promise.all([load(), loadOfflinePayments()]) }
+
+function handleExport() {
+  const now = new Date()
+  const pad = value => String(value).padStart(2, '0')
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`
+  proxy.download('xy/finance/export', {}, `财务对账_${stamp}.xlsx`)
+}
 
 async function confirmOffline(row) {
   try {

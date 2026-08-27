@@ -82,6 +82,7 @@ onMounted(load)
 .xy-toolbar .el-select { width: 180px; }
 .seat-name { color: var(--xy-ink); font-size: 13px; font-weight: 680; }
 .no-action { color: var(--xy-muted); }
+.reservation-stats .xy-stat-note { color: #3f5f58; font-size: 12px; font-weight: 650; }
 @media (max-width: 1100px) { .reservation-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .reservation-stats { grid-template-columns: 1fr; } }
 </style>

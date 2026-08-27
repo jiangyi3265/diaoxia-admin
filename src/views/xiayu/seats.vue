@@ -27,6 +27,7 @@
           <el-table-column prop="address" label="地址" min-width="220" />
           <el-table-column prop="phone" label="电话" />
           <el-table-column prop="businessHours" label="营业时间" />
+          <el-table-column label="地图坐标" width="116"><template #default="s"><span class="xy-status" :class="hasCoordinates(s.row) ? 'xy-status--success' : 'xy-status--warning'">{{ hasCoordinates(s.row) ? '已配置' : '待配置' }}</span></template></el-table-column>
           <el-table-column label="状态" width="100"><template #default="s"><span class="xy-status" :class="s.row.status === '0' ? 'xy-status--success' : 'xy-status--muted'">{{ s.row.status === '0' ? '营业' : '停业' }}</span></template></el-table-column>
           <el-table-column label="操作" width="90"><template #default="s"><el-button link type="primary" @click="editStore(s.row)">编辑</el-button></template></el-table-column>
         </el-table></div>
@@ -64,7 +65,7 @@
     </section>
 
     <el-dialog v-model="storeDialog" title="门店配置" width="560px">
-      <el-form label-position="top"><el-form-item label="门店名称" required><el-input v-model.trim="store.storeName" maxlength="80" /></el-form-item><el-form-item label="详细地址" required><el-input v-model.trim="store.address" /></el-form-item><div class="dialog-grid"><el-form-item label="联系电话" required><el-input v-model.trim="store.phone" placeholder="顾客可联系的门店电话" /></el-form-item><el-form-item label="营业时间" required><el-input v-model.trim="store.businessHours" placeholder="例如 10:00-22:00" /></el-form-item></div><div class="dialog-grid"><el-form-item label="经度"><el-input-number v-model="store.longitude" :min="-180" :max="180" :precision="7" /></el-form-item><el-form-item label="纬度"><el-input-number v-model="store.latitude" :min="-90" :max="90" :precision="7" /></el-form-item></div><el-form-item label="营业状态"><el-switch v-model="storeEnabled" active-text="营业" inactive-text="停业" /></el-form-item></el-form>
+      <el-form label-position="top"><el-form-item label="门店名称" required><el-input v-model.trim="store.storeName" maxlength="80" /></el-form-item><el-form-item label="详细地址" required><el-input v-model.trim="store.address" /></el-form-item><div class="dialog-grid"><el-form-item label="联系电话" required><el-input v-model.trim="store.phone" placeholder="顾客可联系的门店电话" /></el-form-item><el-form-item label="营业时间" required><el-input v-model.trim="store.businessHours" placeholder="例如 10:00-22:00" /></el-form-item></div><div class="dialog-grid"><el-form-item label="经度"><el-input-number v-model="store.longitude" :min="-180" :max="180" :precision="7" /></el-form-item><el-form-item label="纬度"><el-input-number v-model="store.latitude" :min="-90" :max="90" :precision="7" /></el-form-item></div><div class="coordinate-help"><span>请填写腾讯或高德地图中的门店标注坐标，保存后小程序即可直接拉起地图导航。</span><el-button link type="primary" @click="openCoordinatePicker">打开腾讯地图坐标拾取器</el-button></div><el-form-item label="营业状态"><el-switch v-model="storeEnabled" active-text="营业" inactive-text="停业" /></el-form-item></el-form>
       <template #footer><el-button @click="storeDialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="saveStoreForm">保存</el-button></template>
     </el-dialog>
 
@@ -114,6 +115,8 @@ async function load() {
   } finally { loading.value = false }
 }
 function editStore(row = {}) { store.value = { ...row }; storeEnabled.value = row.status !== '1'; storeDialog.value = true }
+const hasCoordinates = row => row?.longitude !== null && row?.longitude !== undefined && row?.longitude !== '' && row?.latitude !== null && row?.latitude !== undefined && row?.latitude !== ''
+function openCoordinatePicker() { window.open('https://lbs.qq.com/getPoint/', '_blank', 'noopener,noreferrer') }
 function editSlot(row = {}) { slot.value = { sortOrder: 0, ...row }; slotRange.value = row.slotId ? [row.startTime, row.endTime] : ['10:00', '12:00']; slotEnabled.value = row.status !== '1'; slotDialog.value = true }
 function editSeat(row = {}) { seat.value = { sortOrder: 0, ...row }; seatEnabled.value = row.status !== '1'; seatDialog.value = true }
 function editPlan(row = monthlyPlan.value || {}) { plan.value = { amount: 0.01, sortOrder: 0, ...row, durationDays: 30, dailyReservationLimit: 1 }; planEnabled.value = row.status !== '1'; planDialog.value = true }
@@ -155,6 +158,8 @@ onMounted(load)
 .plan-tip { margin: 18px 24px; }
 .dialog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .dialog-grid .el-input-number { width: 100%; }
+.coordinate-help { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: -2px 0 18px; padding: 12px 14px; border-radius: 10px; background: var(--xy-mint); color: var(--xy-ink-2); font-size: 12px; line-height: 1.55; }
+.coordinate-help span { flex: 1; }
 @media (max-width: 1100px) { .config-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .config-stats, .dialog-grid { grid-template-columns: 1fr; } }
 </style>
