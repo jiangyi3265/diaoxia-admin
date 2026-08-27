@@ -4,6 +4,7 @@ const unwrap = (promise) => promise.then(response => response.data)
 
 export const getXyDashboard = () => unwrap(request.get('/xy/dashboard'))
 export const getXyMembers = (keyword) => unwrap(request.get('/xy/members', { params: { keyword } }))
+export const getXyMemberPlans = () => unwrap(request.get('/xy/members/plans'))
 export const saveXyMember = (member) => unwrap(member.memberId ? request.put(`/xy/members/${encodeURIComponent(member.memberId)}`, member) : request.post('/xy/members', member))
 export const deleteXyMember = (memberId) => unwrap(request.delete(`/xy/members/${encodeURIComponent(memberId)}`))
 export const getXyReservations = (date, status) => unwrap(request.get('/xy/reservations', { params: { date, status } }))
