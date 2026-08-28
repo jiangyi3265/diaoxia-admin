@@ -42,6 +42,19 @@
         </el-table></div>
       </el-tab-pane>
 
+      <el-tab-pane label="暂停预约" name="pauses">
+        <div class="xy-toolbar"><el-button type="primary" :disabled="!storeId || !selectableSlots.length" @click="openPauseDialog">新增暂停</el-button><span class="xy-toolbar-spacer"></span><span class="toolbar-note">按日期暂停一个或多个时段，并向小程序顾客展示公告</span></div>
+        <div class="xy-inline-note pause-tip">暂停只阻止新的预约，不会自动取消已有预约。若“已有预约”不为 0，请及时联系顾客调整。</div>
+        <div class="xy-table-wrap"><el-table :data="filteredPauses" v-loading="loading" empty-text="当前门店未来30天没有暂停安排">
+          <el-table-column prop="pauseDate" label="暂停日期" width="125"><template #default="s"><span class="xy-date">{{ s.row.pauseDate }}</span></template></el-table-column>
+          <el-table-column prop="slotTimes" label="暂停时段" min-width="220" />
+          <el-table-column prop="announcement" label="小程序公告" min-width="260" show-overflow-tooltip />
+          <el-table-column label="已有预约" width="112"><template #default="s"><span class="xy-status" :class="Number(s.row.existingReservationCount) ? 'xy-status--warning' : 'xy-status--success'">{{ Number(s.row.existingReservationCount) ? `${s.row.existingReservationCount} 条` : '无' }}</span></template></el-table-column>
+          <el-table-column prop="createBy" label="操作人" width="110" />
+          <el-table-column label="操作" width="100" fixed="right"><template #default="s"><el-button link type="primary" @click="resumePause(s.row)">恢复预约</el-button></template></el-table-column>
+        </el-table></div>
+      </el-tab-pane>
+
       <el-tab-pane label="座位" name="seats">
         <div class="xy-toolbar"><el-button type="primary" :disabled="!storeId" @click="editSeat()">新增座位</el-button><span v-if="!storeId" class="toolbar-note">请先选择门店</span></div>
         <div class="xy-table-wrap"><el-table :data="filteredSeats" v-loading="loading" empty-text="当前门店暂无座位">
@@ -74,6 +87,16 @@
       <template #footer><el-button @click="slotDialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="saveSlotForm">保存</el-button></template>
     </el-dialog>
 
+    <el-dialog v-model="pauseDialog" title="暂停预约并发布公告" width="560px">
+      <el-form label-position="top">
+        <el-form-item label="暂停日期" required><el-date-picker v-model="pauseForm.pauseDate" type="date" value-format="YYYY-MM-DD" :clearable="false" :disabled-date="disablePauseDate" style="width:100%" /></el-form-item>
+        <el-form-item label="暂停时段" required><el-select v-model="pauseForm.slotIds" multiple collapse-tags collapse-tags-tooltip placeholder="选择一个或多个时段" style="width:100%"><el-option v-for="item in selectableSlots" :key="item.slotId" :label="`${item.startTime}-${item.endTime}`" :value="item.slotId" /></el-select></el-form-item>
+        <el-form-item label="顾客公告" required><el-input v-model.trim="pauseForm.announcement" type="textarea" :rows="4" maxlength="300" show-word-limit placeholder="例如：8月30日设备维护，所选时段暂停营业，给您带来不便敬请谅解。" /></el-form-item>
+        <el-alert title="保存后立即停止所选时段的新预约；已有预约保留，请根据页面提示联系顾客。" type="warning" :closable="false" show-icon />
+      </el-form>
+      <template #footer><el-button @click="pauseDialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="savePauseForm">确认暂停并发布</el-button></template>
+    </el-dialog>
+
     <el-dialog v-model="seatDialog" title="座位配置" width="480px">
       <el-form label-width="90px"><el-form-item label="座位编号"><el-input v-model="seat.seatCode" /></el-form-item><el-form-item label="区域"><el-input v-model="seat.zoneName" /></el-form-item><el-form-item label="排序"><el-input-number v-model="seat.sortOrder" :min="0" /></el-form-item><el-form-item label="启用"><el-switch v-model="seatEnabled" /></el-form-item></el-form>
       <template #footer><el-button @click="seatDialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="saveSeatForm">保存</el-button></template>
@@ -88,18 +111,21 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getXyReservationConfiguration, saveXyPlan, saveXySeat, saveXySlot, saveXyStore } from '@/api/xy'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getXyReservationConfiguration, getXyReservationPauses, resumeXyReservationPause, saveXyPlan, saveXyReservationPause, saveXySeat, saveXySlot, saveXyStore } from '@/api/xy'
 import auth from '@/plugins/auth'
 
 const tab = ref('stores'), loading = ref(false), saving = ref(false), storeId = ref()
-const stores = ref([]), slots = ref([]), seats = ref([]), plans = ref([])
-const storeDialog = ref(false), slotDialog = ref(false), seatDialog = ref(false), planDialog = ref(false)
+const stores = ref([]), slots = ref([]), seats = ref([]), plans = ref([]), pauses = ref([])
+const storeDialog = ref(false), slotDialog = ref(false), pauseDialog = ref(false), seatDialog = ref(false), planDialog = ref(false)
 const store = ref({}), slot = ref({}), seat = ref({}), plan = ref({})
+const pauseForm = ref({ pauseDate: '', slotIds: [], announcement: '' })
 const storeEnabled = ref(true), slotEnabled = ref(true), seatEnabled = ref(true), planEnabled = ref(true)
 const slotRange = ref(['10:00', '12:00'])
 const filteredSlots = computed(() => slots.value.filter(item => item.storeId === storeId.value))
 const filteredSeats = computed(() => seats.value.filter(item => item.storeId === storeId.value))
+const selectableSlots = computed(() => filteredSlots.value.filter(item => item.status === '0'))
+const filteredPauses = computed(() => pauses.value.filter(item => String(item.storeId) === String(storeId.value)))
 const selectedStore = computed(() => stores.value.find(item => item.storeId === storeId.value))
 const enabledStores = computed(() => stores.value.filter(item => item.status === '0').length)
 const canManagePlans = computed(() => auth.hasPermi('xy:member:plan'))
@@ -109,8 +135,9 @@ const monthlyPlanRows = computed(() => monthlyPlan.value ? [monthlyPlan.value] :
 async function load() {
   loading.value = true
   try {
-    const data = await getXyReservationConfiguration()
+    const [data, pauseRows] = await Promise.all([getXyReservationConfiguration(), getXyReservationPauses()])
     stores.value = data.stores || []; slots.value = data.slots || []; seats.value = data.seats || []; plans.value = data.plans || []
+    pauses.value = pauseRows || []
     if ((!storeId.value || !stores.value.some(item => item.storeId === storeId.value)) && stores.value.length) storeId.value = stores.value[0].storeId
   } finally { loading.value = false }
 }
@@ -118,6 +145,19 @@ function editStore(row = {}) { store.value = { ...row }; storeEnabled.value = ro
 const hasCoordinates = row => row?.longitude !== null && row?.longitude !== undefined && row?.longitude !== '' && row?.latitude !== null && row?.latitude !== undefined && row?.latitude !== ''
 function openCoordinatePicker() { window.open('https://lbs.qq.com/getPoint/', '_blank', 'noopener,noreferrer') }
 function editSlot(row = {}) { slot.value = { sortOrder: 0, ...row }; slotRange.value = row.slotId ? [row.startTime, row.endTime] : ['10:00', '12:00']; slotEnabled.value = row.status !== '1'; slotDialog.value = true }
+const todayText = () => {
+  const now = new Date()
+  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-')
+}
+const disablePauseDate = date => {
+  const start = new Date(); start.setHours(0, 0, 0, 0)
+  const end = new Date(start); end.setDate(end.getDate() + 29); end.setHours(23, 59, 59, 999)
+  return date < start || date > end
+}
+function openPauseDialog() {
+  pauseForm.value = { pauseDate: todayText(), slotIds: [], announcement: '' }
+  pauseDialog.value = true
+}
 function editSeat(row = {}) { seat.value = { sortOrder: 0, ...row }; seatEnabled.value = row.status !== '1'; seatDialog.value = true }
 function editPlan(row = monthlyPlan.value || {}) { plan.value = { amount: 0.01, sortOrder: 0, ...row, durationDays: 30, dailyReservationLimit: 1 }; planEnabled.value = row.status !== '1'; planDialog.value = true }
 async function commit(action, close) { saving.value = true; try { await action(); close.value = false; ElMessage.success('已保存'); await load() } finally { saving.value = false } }
@@ -139,6 +179,27 @@ const saveSlotForm = () => {
   if (overlaps) { ElMessage.warning('该时段与现有预约时段重叠'); return }
   return commit(() => saveXySlot({ ...slot.value, storeId: storeId.value, startTime, endTime, status: slotEnabled.value ? '0' : '1' }), slotDialog)
 }
+const savePauseForm = async () => {
+  if (!pauseForm.value.pauseDate) { ElMessage.warning('请选择暂停日期'); return }
+  if (!Array.isArray(pauseForm.value.slotIds) || !pauseForm.value.slotIds.length) { ElMessage.warning('请至少选择一个暂停时段'); return }
+  if (!pauseForm.value.announcement?.trim()) { ElMessage.warning('请填写展示给顾客的暂停公告'); return }
+  saving.value = true
+  try {
+    const result = await saveXyReservationPause({ ...pauseForm.value, storeId: storeId.value })
+    pauseDialog.value = false
+    const existing = Number(result?.existingReservationCount || 0)
+    existing ? ElMessage.warning(`已暂停预约，但所选时段已有 ${existing} 条预约，请及时联系顾客`) : ElMessage.success('所选时段已暂停，小程序公告已发布')
+    await load()
+  } finally { saving.value = false }
+}
+async function resumePause(row) {
+  try {
+    await ElMessageBox.confirm(`确定恢复 ${row.pauseDate} 的 ${row.slotTimes} 预约吗？`, '恢复预约', { type: 'warning', confirmButtonText: '恢复预约', cancelButtonText: '暂不恢复' })
+  } catch { return }
+  await resumeXyReservationPause(row.batchNo)
+  ElMessage.success('所选时段已恢复预约')
+  await load()
+}
 const saveSeatForm = () => {
   if (!seat.value.seatCode?.trim()) { ElMessage.warning('请填写座位编号'); return }
   return commit(() => saveXySeat({ ...seat.value, storeId: storeId.value, status: seatEnabled.value ? '0' : '1' }), seatDialog)
@@ -156,6 +217,7 @@ onMounted(load)
 .selected-store { color: var(--xy-primary-deep); font-size: 12px; font-weight: 650; }
 .toolbar-note { color: var(--xy-muted); font-size: 12px; }
 .plan-tip { margin: 18px 24px; }
+.pause-tip { margin: 16px 24px; color: #6f4d18; background: #fff7e6; }
 .dialog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .dialog-grid .el-input-number { width: 100%; }
 .coordinate-help { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: -2px 0 18px; padding: 12px 14px; border-radius: 10px; background: var(--xy-mint); color: var(--xy-ink-2); font-size: 12px; line-height: 1.55; }
