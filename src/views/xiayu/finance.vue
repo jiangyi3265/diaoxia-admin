@@ -100,7 +100,7 @@ const offlineStatusOptions = [
 
 const confirmedAmount = computed(() => rows.value.filter(item => paidStatuses.includes(item.status)).reduce((sum, item) => sum + Number(item.amount || 0), 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
 const formatMoney = value => Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const businessLabel = value => ({ MEMBERSHIP: '会员开通', MEMBER: '会员开通', ORDER: '商城订单', MALL_ORDER: '商城订单' }[value] || value || '其他业务')
+const businessLabel = value => ({ MEMBERSHIP: '会员开通', MEMBER: '会员开通', ORDER: '商城订单', MALL_ORDER: '商城订单', BENEFIT_EVENT: '福利钓专场' }[value] || value || '其他业务')
 const channelLabel = value => ({ OFFLINE: '线下收款', WECHAT: '微信支付', WX: '微信支付' }[value] || value || '未标记')
 const channelClass = value => value === 'OFFLINE' ? 'xy-status--info' : 'xy-status--muted'
 const statusLabel = value => ({ PAID: '已支付', SUCCESS: '已成功', COMPLETED: '已完成', PENDING: '待收款', CLOSED: '已关闭', REFUNDING: '退款处理中', REFUNDED: '已退款' }[value] || value || '未知')

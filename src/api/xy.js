@@ -35,3 +35,11 @@ export const approveXyAfterSale = (no) => unwrap(request.post(`/xy/after-sales/$
 export const rejectXyAfterSale = (no) => unwrap(request.post(`/xy/after-sales/${encodeURIComponent(no)}/reject`))
 export const completeXyOfflineRefund = (no) => unwrap(request.post(`/xy/after-sales/${encodeURIComponent(no)}/complete-offline-refund`))
 export const restockXyReturnedAfterSale = (no) => unwrap(request.post(`/xy/after-sales/${encodeURIComponent(no)}/restock`))
+export const getXyBenefitEvents = () => unwrap(request.get('/xy/benefit-events'))
+export const getXyBenefitEvent = (eventId) => unwrap(request.get(`/xy/benefit-events/${encodeURIComponent(eventId)}`))
+export const saveXyBenefitEvent = (data) => unwrap(data.eventId
+  ? request.put(`/xy/benefit-events/${encodeURIComponent(data.eventId)}`, data)
+  : request.post('/xy/benefit-events', data))
+export const confirmXyBenefitEvent = (eventId) => unwrap(request.post(`/xy/benefit-events/${encodeURIComponent(eventId)}/confirm`))
+export const cancelXyBenefitEvent = (eventId, reason) => unwrap(request.post(`/xy/benefit-events/${encodeURIComponent(eventId)}/cancel`, { reason }))
+export const refundXyBenefitBooking = (bookingId, reason) => unwrap(request.post(`/xy/benefit-bookings/${encodeURIComponent(bookingId)}/refund`, { reason }))

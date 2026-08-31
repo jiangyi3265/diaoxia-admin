@@ -103,6 +103,7 @@ const allNav = [
   ]},
   { group: '预约运营', items: [
     { key: 'reservations', label: '预约看板', icon: 'calendar-check', permission: 'xy:reservation:list' },
+    { key: 'benefit-events', label: '福利钓专场', icon: 'gift', permission: 'xy:benefit:list' },
     { key: 'seats', label: '座位时段', icon: 'seat', permission: 'xy:reservation:config' },
     { key: 'verify', label: '核销管理', icon: 'qrcode', permission: 'xy:reservation:verify' }
   ]},
@@ -122,7 +123,7 @@ const roleText = computed(() => userStore.roles && userStore.roles.length ? user
 
 const titleMap = {
   dashboard: '数据看板', members: '会员管理', finance: '财务对账',
-  reservations: '预约看板', seats: '座位时段', verify: '核销管理',
+  reservations: '预约看板', 'benefit-events': '福利钓专场', seats: '座位时段', verify: '核销管理',
   mall: '商城管理', staff: '员工权限'
 }
 
