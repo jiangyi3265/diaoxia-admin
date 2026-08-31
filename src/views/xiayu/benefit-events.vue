@@ -12,6 +12,10 @@
       </div>
     </section>
 
+    <el-alert v-if="!benefitNoticesReady" class="notice-config-alert" type="warning" :closable="false" show-icon
+      title="福利钓订阅消息尚未配置完整"
+      description="开始通知或取消通知模板 ID 为空。场次和退款可以正常处理，但用户暂时收不到对应的微信订阅消息，请先在微信公众平台申请模板并配置到服务器。" />
+
     <section class="xy-stat-grid benefit-stats" aria-label="福利钓统计">
       <article class="xy-stat"><span class="xy-stat-label">未来场次</span><strong class="xy-stat-value">{{ futureCount }}</strong><span class="xy-stat-note">未来7天内</span></article>
       <article class="xy-stat"><span class="xy-stat-label">当前场报名</span><strong class="xy-stat-value">{{ Number(activeEvent?.bookedCount || 0) }}</strong><span class="xy-stat-note">共22个位置</span></article>
@@ -41,7 +45,7 @@
               <p>19:30截止报名，100元/位，每位用户本场限报一个位置。</p>
             </div>
             <div class="detail-actions">
-              <el-button v-hasPermi="['xy:benefit:edit']" :disabled="!editable" @click="openEditor(activeEvent)">编辑公告</el-button>
+              <el-button v-hasPermi="['xy:benefit:edit']" :disabled="!editable" :title="editable ? '' : '已有报名或待支付记录，关键信息已锁定'" @click="openEditor(activeEvent)">编辑公告</el-button>
               <el-button v-hasPermi="['xy:benefit:edit']" type="success" :disabled="!canConfirm" :loading="acting" @click="confirmStart">{{ activeEvent.status === 'CONFIRMED' ? '补发开始通知' : '确认正常开始' }}</el-button>
               <el-button v-hasPermi="['xy:benefit:refund']" type="danger" plain :disabled="!canCancel" :loading="acting" @click="cancelEvent">取消专场并一键退款</el-button>
             </div>
@@ -84,7 +88,7 @@
               <el-table-column label="支付" min-width="150"><template #default="s"><div class="payment-cell"><strong>¥{{ money(s.row.amount) }}</strong><span>{{ s.row.paymentNo }}</span></div></template></el-table-column>
               <el-table-column label="报名状态" width="115"><template #default="s"><span class="xy-status" :class="bookingStatusClass(s.row.status)">{{ bookingStatus(s.row.status) }}</span></template></el-table-column>
               <el-table-column label="退款状态" width="120"><template #default="s"><span class="xy-status" :class="refundStatusClass(s.row.refundStatus)">{{ refundStatus(s.row.refundStatus) }}</span></template></el-table-column>
-              <el-table-column label="操作" width="110" fixed="right"><template #default="s"><el-button v-if="s.row.status === 'BOOKED'" v-hasPermi="['xy:benefit:refund']" link type="danger" :loading="processingId === s.row.bookingId" @click="refundSeat(s.row)">单座退款</el-button><span v-else class="no-action">—</span></template></el-table-column>
+              <el-table-column label="操作" width="110" fixed="right"><template #default="s"><el-button v-if="s.row.status === 'BOOKED' || (s.row.refundStatus === 'FAILED' && s.row.paymentStatus === 'SUCCESS')" v-hasPermi="['xy:benefit:refund']" link type="danger" :loading="processingId === s.row.bookingId" @click="refundSeat(s.row)">{{ s.row.refundStatus === 'FAILED' ? '重试退款' : '单座退款' }}</el-button><span v-else class="no-action">—</span></template></el-table-column>
             </el-table></div>
           </section>
         </template>
@@ -108,16 +112,18 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import XyIcon from './XyIcon.vue'
-import { cancelXyBenefitEvent, confirmXyBenefitEvent, getXyBenefitEvent, getXyBenefitEvents, getXyReservationConfiguration, refundXyBenefitBooking, saveXyBenefitEvent } from '@/api/xy'
+import { cancelXyBenefitEvent, confirmXyBenefitEvent, getXyBenefitEvent, getXyBenefitEvents, getXyNotificationSettings, getXyReservationConfiguration, refundXyBenefitBooking, saveXyBenefitEvent } from '@/api/xy'
 
 const events = ref([]), stores = ref([]), activeId = ref(), activeEvent = ref(null)
 const loading = ref(false), saving = ref(false), acting = ref(false), processingId = ref(null), editorOpen = ref(false)
+const notificationSettings = ref({})
 const form = ref({ eventDate: '', storeId: null, announcement: '', status: 'OPEN' })
 const bookingTable = ref()
 const topSeats = [18,17,16,15,14,13,12,11,10], bottomSeats = [1,2,3,4,5,6,7,8,9]
 const bookings = computed(() => activeEvent.value?.bookings || [])
 const futureCount = computed(() => events.value.filter(item => !['CANCELED','FINISHED'].includes(item.status)).length)
-const editable = computed(() => activeEvent.value && !['CANCELED','FINISHED'].includes(activeEvent.value.status))
+const editable = computed(() => activeEvent.value && !['CANCELED','FINISHED'].includes(activeEvent.value.status) && Number(activeEvent.value.lockedCount || 0) === 0)
+const benefitNoticesReady = computed(() => Boolean(notificationSettings.value.benefitStartTemplateId && notificationSettings.value.benefitCancelTemplateId))
 const canConfirm = computed(() => activeEvent.value && ['OPEN','CONFIRMED'].includes(activeEvent.value.status))
 const canCancel = computed(() => activeEvent.value && ['DRAFT','OPEN','CONFIRMED'].includes(activeEvent.value.status))
 const bookingBySeat = computed(() => {
@@ -129,8 +135,9 @@ const bookingBySeat = computed(() => {
 async function load(keepId = activeId.value) {
   loading.value = true
   try {
-    const [eventRows, config] = await Promise.all([getXyBenefitEvents(), getXyReservationConfiguration()])
+    const [eventRows, config, notices] = await Promise.all([getXyBenefitEvents(), getXyReservationConfiguration(), getXyNotificationSettings()])
     events.value = eventRows || []; stores.value = (config.stores || []).filter(item => item.status === '0')
+    notificationSettings.value = notices || {}
     const target = events.value.find(item => item.eventId === keepId) || events.value[0]
     activeId.value = target?.eventId
     activeEvent.value = target ? await getXyBenefitEvent(target.eventId) : null
@@ -189,6 +196,7 @@ onMounted(load)
 </script>
 
 <style scoped>
+.notice-config-alert{margin-bottom:20px}
 .benefit-stats{grid-template-columns:repeat(4,minmax(0,1fr))}.benefit-workspace{display:grid;grid-template-columns:220px minmax(0,1fr);overflow:hidden;border:1px solid var(--xy-hairline);border-radius:18px;background:var(--xy-surface)}.event-rail{padding:20px 14px;background:#f4f8f7;border-right:1px solid var(--xy-hairline)}.rail-head{padding:0 6px 14px}.rail-head h3,.detail-head h3,.panel-title h4{margin:0;color:var(--xy-ink)}.rail-head p,.detail-head p,.panel-title p{margin:5px 0 0;color:var(--xy-ink-3);font-size:12px}.event-list{display:flex;flex-direction:column;gap:8px}.event-item{display:flex;flex-direction:column;align-items:flex-start;width:100%;padding:13px;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--xy-ink);cursor:pointer;text-align:left}.event-item:hover{background:#eaf3f0}.event-item.active{border-color:#9bd5cb;background:#e0f2ed}.event-date{font-size:15px;font-weight:750}.event-time{margin-top:4px;color:var(--xy-ink-2);font-size:12px}.event-meta{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:9px;color:var(--xy-ink-3);font-size:12px}.rail-empty{padding:18px 8px;color:var(--xy-ink-3);font-size:13px;line-height:1.6}.event-detail{min-width:0;padding:24px}.detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}.detail-kicker{color:var(--xy-primary-deep);font-size:12px;font-weight:700}.detail-head h3{margin-top:5px;font-size:21px}.detail-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}.decision-note{display:flex;align-items:center;gap:9px;margin-top:18px;padding:12px 14px;border-radius:11px;background:#fff6e5;color:#76531c;font-size:13px}.decision-note.confirmed{background:#e7f5ef;color:#176b55}.seat-and-notice{display:grid;grid-template-columns:minmax(500px,1.45fr) minmax(240px,.75fr);gap:20px;margin-top:20px}.seat-panel,.notice-panel{padding:19px;border:1px solid var(--xy-hairline);border-radius:15px}.panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.seat-legend{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:9px;color:var(--xy-ink-3);font-size:11px}.seat-legend span{display:flex;align-items:center;gap:5px}.seat-legend i{width:9px;height:9px;border-radius:3px}.seat-legend .free{background:#dff1ec}.seat-legend .booked{background:#0e9c8e}.seat-legend .pending{background:#e0a24e}.seat-legend .closed{background:#9daca6}.pool-map{margin-top:18px;padding:15px;border-radius:14px;background:#eef5f3}.seat-row{display:grid;grid-template-columns:repeat(9,minmax(32px,1fr));gap:7px}.pool-middle{display:grid;grid-template-columns:42px minmax(260px,1fr) 42px;align-items:stretch;gap:9px;margin:9px 0}.side-seats{display:flex;flex-direction:column;justify-content:space-around;gap:8px}.pool{display:flex;min-height:145px;align-items:center;justify-content:center;flex-direction:column;border:2px solid #82bdb2;border-radius:20px;background:#d9efea;color:#145e55}.pool span{font-size:26px;font-weight:800;letter-spacing:1px}.pool small{margin-top:6px;color:#5e847d;font-size:11px}.map-seat{min-width:32px;height:34px;padding:0;border:1px solid transparent;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}.map-seat.free{background:#f9fcfb;color:#45615b}.map-seat.booked{background:#0e9c8e;color:#f4fbf9}.map-seat.pending{background:#f3dfb7;color:#7b5618}.map-seat.closed{background:#dce3e1;color:#778985}.notice-copy{min-height:136px;margin-top:17px;padding:14px;border-radius:11px;background:#f4f8f7;color:var(--xy-ink-2);font-size:13px;line-height:1.75;white-space:pre-wrap}.fixed-rules{margin:14px 0 0}.fixed-rules div{display:flex;justify-content:space-between;padding:9px 2px;border-bottom:1px solid var(--xy-hairline);font-size:12px}.fixed-rules div:last-child{border-bottom:0}.fixed-rules dt{color:var(--xy-ink-3)}.fixed-rules dd{margin:0;color:var(--xy-ink);font-weight:650}.booking-table{scroll-margin-top:96px;margin-top:22px}.member-cell,.payment-cell{display:flex;flex-direction:column;gap:3px}.member-cell span,.payment-cell span{color:var(--xy-ink-3);font-size:11px}.payment-cell span{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.seat-number{display:inline-grid;width:30px;height:30px;place-items:center;border-radius:9px;background:var(--xy-mint);color:var(--xy-primary-deep)}.detail-empty{display:flex;min-height:480px;align-items:center;justify-content:center;flex-direction:column;color:var(--xy-ink-3);text-align:center}.detail-empty h3{margin:18px 0 5px;color:var(--xy-ink)}.detail-empty p{margin:0;font-size:13px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.fixed-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}.fixed-strip span{padding:10px;border-radius:9px;background:var(--xy-mint);color:var(--xy-ink-2);font-size:12px}.fixed-strip strong{display:block;margin-top:3px;color:var(--xy-primary-deep)}
 @media(max-width:1200px){.benefit-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.seat-and-notice{grid-template-columns:1fr}.detail-head{flex-direction:column}.detail-actions{justify-content:flex-start}}
 @media(max-width:820px){.benefit-workspace{grid-template-columns:1fr}.event-rail{border-right:0;border-bottom:1px solid var(--xy-hairline)}.event-list{display:grid;grid-template-columns:repeat(2,1fr)}.event-detail{padding:16px}.seat-panel{overflow-x:auto}.pool-map{min-width:540px}.form-grid,.fixed-strip{grid-template-columns:1fr 1fr}}

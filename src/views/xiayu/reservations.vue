@@ -11,6 +11,10 @@
       </div>
     </section>
 
+    <el-alert v-if="!reminderReady" class="reminder-alert" type="warning" :closable="false" show-icon
+      title="预约提醒模板尚未配置"
+      description="预约功能可以正常使用，但用户暂时收不到微信订阅提醒。请在微信公众平台申请模板并配置到服务器。" />
+
     <section class="xy-stat-grid reservation-stats" aria-label="预约状态统计">
       <article v-for="item in statusStats" :key="item.label" class="xy-stat">
         <span class="xy-stat-label">{{ item.label }}</span><strong class="xy-stat-value">{{ item.value }}</strong><span class="xy-stat-note">{{ item.note }}</span>
@@ -45,7 +49,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getXyReservations, verifyXyReservation } from '@/api/xy'
+import { getXyNotificationSettings, getXyReservations, verifyXyReservation } from '@/api/xy'
 
 const pad = value => String(value).padStart(2, '0')
 const now = new Date()
@@ -53,6 +57,7 @@ const date = ref(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getD
 const status = ref('')
 const reservations = ref([])
 const loading = ref(false)
+const reminderReady = ref(true)
 const countStatus = value => reservations.value.filter(item => item.status === value).length
 const statusStats = computed(() => [
   { label: '全部预约', value: reservations.value.length, note: '当前筛选结果' },
@@ -68,16 +73,21 @@ async function load() {
   loading.value = true
   try { reservations.value = await getXyReservations(date.value, status.value) } finally { loading.value = false }
 }
+async function loadReminderState() {
+  try { reminderReady.value = Boolean((await getXyNotificationSettings())?.reservationReminderTemplateId) }
+  catch { reminderReady.value = false }
+}
 async function verify(row) {
   try { await ElMessageBox.confirm(`确认 ${row.nickname || '该会员'} 已到店，并核销本次预约？`, '确认签到', { type: 'warning', confirmButtonText: '确认签到', cancelButtonText: '返回核对' }) } catch { return }
   await verifyXyReservation(row.verifyCode)
   ElMessage.success('签到已记录')
   await load()
 }
-onMounted(load)
+onMounted(() => { load(); loadReminderState() })
 </script>
 
 <style scoped>
+.reminder-alert { margin-bottom: 20px; }
 .reservation-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .xy-toolbar .el-select { width: 180px; }
 .seat-name { color: var(--xy-ink); font-size: 13px; font-weight: 680; }

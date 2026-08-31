@@ -36,6 +36,7 @@ export const rejectXyAfterSale = (no) => unwrap(request.post(`/xy/after-sales/${
 export const completeXyOfflineRefund = (no) => unwrap(request.post(`/xy/after-sales/${encodeURIComponent(no)}/complete-offline-refund`))
 export const restockXyReturnedAfterSale = (no) => unwrap(request.post(`/xy/after-sales/${encodeURIComponent(no)}/restock`))
 export const getXyBenefitEvents = () => unwrap(request.get('/xy/benefit-events'))
+export const getXyNotificationSettings = () => unwrap(request.get('/app/notification-settings', { headers: { isToken: false } }))
 export const getXyBenefitEvent = (eventId) => unwrap(request.get(`/xy/benefit-events/${encodeURIComponent(eventId)}`))
 export const saveXyBenefitEvent = (data) => unwrap(data.eventId
   ? request.put(`/xy/benefit-events/${encodeURIComponent(data.eventId)}`, data)
