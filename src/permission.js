@@ -22,6 +22,7 @@ const xyRoutePermissions = {
   '/xiayu/dashboard': 'xy:dashboard:view',
   '/xiayu/members': 'xy:member:list',
   '/xiayu/reservations': 'xy:reservation:list',
+  '/xiayu/benefit-events': 'xy:benefit:list',
   '/xiayu/seats': 'xy:reservation:config',
   '/xiayu/mall': 'xy:product:list',
   '/xiayu/verify': 'xy:reservation:verify',
