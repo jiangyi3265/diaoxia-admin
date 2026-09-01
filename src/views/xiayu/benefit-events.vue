@@ -30,6 +30,7 @@
           <button v-for="item in events" :key="item.eventId" type="button" class="event-item" :class="{ active: item.eventId === activeId }" @click="selectEvent(item.eventId)">
             <span class="event-date">{{ formatDate(item.eventDate) }}</span>
             <span class="event-time">20:15–22:15</span>
+            <span class="event-price">¥{{ money(item.feeAmount) }}/位</span>
             <span class="event-meta"><span class="xy-status" :class="eventStatusClass(item.status)">{{ eventStatus(item.status) }}</span><span>{{ item.bookedCount || 0 }}/22</span></span>
           </button>
         </div>
@@ -42,10 +43,10 @@
             <div>
               <span class="detail-kicker">{{ activeEvent.eventDate }} · {{ activeEvent.storeName }}</span>
               <h3>20:15–22:15 福利钓专场</h3>
-              <p>19:30截止报名，100元/位，每位用户本场限报一个位置。</p>
+              <p>19:30截止报名，¥{{ money(activeEvent.feeAmount) }}/位，每位用户本场限报一个位置。</p>
             </div>
             <div class="detail-actions">
-              <el-button v-hasPermi="['xy:benefit:edit']" :disabled="!editable" :title="editable ? '' : '已有报名或待支付记录，关键信息已锁定'" @click="openEditor(activeEvent)">编辑公告</el-button>
+              <el-button v-hasPermi="['xy:benefit:edit']" :disabled="!editable" :title="editable ? '' : '已有报名或待支付记录，关键信息已锁定'" @click="openEditor(activeEvent)">编辑场次</el-button>
               <el-button v-hasPermi="['xy:benefit:edit']" type="success" :disabled="!canConfirm" :loading="acting" @click="confirmStart">{{ activeEvent.status === 'CONFIRMED' ? '补发开始通知' : '确认正常开始' }}</el-button>
               <el-button v-hasPermi="['xy:benefit:refund']" type="danger" plain :disabled="!canCancel" :loading="acting" @click="cancelEvent">取消专场并一键退款</el-button>
             </div>
@@ -75,7 +76,7 @@
             <div class="notice-panel">
               <div class="panel-title"><div><h4>当天公告</h4><p>第{{ activeEvent.announcementVersion }}版</p></div></div>
               <div class="notice-copy">{{ activeEvent.announcement }}</div>
-              <dl class="fixed-rules"><div><dt>时间</dt><dd>20:15–22:15</dd></div><div><dt>截止</dt><dd>当天19:30</dd></div><div><dt>费用</dt><dd>¥100.00/位</dd></div><div><dt>限制</dt><dd>每人每场1位</dd></div></dl>
+              <dl class="fixed-rules"><div><dt>时间</dt><dd>20:15–22:15</dd></div><div><dt>截止</dt><dd>当天19:30</dd></div><div><dt>费用</dt><dd>¥{{ money(activeEvent.feeAmount) }}/位</dd></div><div><dt>限制</dt><dd>每人每场1位</dd></div></dl>
             </div>
           </div>
 
@@ -99,7 +100,10 @@
     <el-dialog v-model="editorOpen" :title="form.eventId ? '编辑福利钓专场' : '创建福利钓专场'" width="620px">
       <el-form label-position="top">
         <div class="form-grid"><el-form-item label="营业门店" required><el-select v-model="form.storeId" style="width:100%"><el-option v-for="store in stores" :key="store.storeId" :label="store.storeName" :value="store.storeId" /></el-select></el-form-item><el-form-item label="专场日期" required><el-date-picker v-model="form.eventDate" type="date" value-format="YYYY-MM-DD" :disabled-date="disableDate" style="width:100%" /></el-form-item></div>
-        <div class="fixed-strip"><span>固定时间 <strong>20:15–22:15</strong></span><span>截止 <strong>19:30</strong></span><span>费用 <strong>¥100/位</strong></span><span>座位 <strong>22个</strong></span></div>
+        <el-form-item label="报名费（元/位）" required>
+          <div class="fee-editor"><el-input-number v-model="form.feeAmount" :min="0.01" :max="9999.99" :precision="2" :step="10" controls-position="right" /><span>每个场次可单独定价；出现报名或待支付记录后自动锁定。</span></div>
+        </el-form-item>
+        <div class="fixed-strip"><span>固定时间 <strong>20:15–22:15</strong></span><span>截止 <strong>19:30</strong></span><span>座位 <strong>22个</strong></span></div>
         <el-form-item label="当天公告、奖品与开闭场条件" required><el-input v-model="form.announcement" type="textarea" :rows="9" maxlength="2000" show-word-limit placeholder="请写清当天奖品、活动规则、开场条件、闭场条件、到店时间和注意事项。" /></el-form-item>
         <el-form-item label="保存状态"><el-radio-group v-model="form.status"><el-radio-button value="DRAFT">保存草稿</el-radio-button><el-radio-button value="OPEN">立即开放报名</el-radio-button></el-radio-group></el-form-item>
       </el-form>
@@ -117,7 +121,7 @@ import { cancelXyBenefitEvent, confirmXyBenefitEvent, getXyBenefitEvent, getXyBe
 const events = ref([]), stores = ref([]), activeId = ref(), activeEvent = ref(null)
 const loading = ref(false), saving = ref(false), acting = ref(false), processingId = ref(null), editorOpen = ref(false)
 const notificationSettings = ref({})
-const form = ref({ eventDate: '', storeId: null, announcement: '', status: 'OPEN' })
+const form = ref({ eventDate: '', storeId: null, feeAmount: 100, announcement: '', status: 'OPEN' })
 const bookingTable = ref()
 const topSeats = [18,17,16,15,14,13,12,11,10], bottomSeats = [1,2,3,4,5,6,7,8,9]
 const bookings = computed(() => activeEvent.value?.bookings || [])
@@ -146,11 +150,12 @@ async function load(keepId = activeId.value) {
 async function selectEvent(id) { activeId.value = id; activeEvent.value = await getXyBenefitEvent(id) }
 function openEditor(row = null) {
   const today = dateText(new Date())
-  form.value = row ? { eventId: row.eventId, eventDate: row.eventDate, storeId: row.storeId, announcement: row.announcement, status: row.status === 'DRAFT' ? 'DRAFT' : 'OPEN' } : { eventDate: today, storeId: stores.value[0]?.storeId, announcement: '', status: 'OPEN' }
+  form.value = row ? { eventId: row.eventId, eventDate: row.eventDate, storeId: row.storeId, feeAmount: Number(row.feeAmount), announcement: row.announcement, status: row.status === 'DRAFT' ? 'DRAFT' : 'OPEN' } : { eventDate: today, storeId: stores.value[0]?.storeId, feeAmount: 100, announcement: '', status: 'OPEN' }
   editorOpen.value = true
 }
 async function saveEvent() {
   if (!form.value.storeId || !form.value.eventDate) { ElMessage.warning('请选择门店和日期'); return }
+  if (!Number.isFinite(Number(form.value.feeAmount)) || Number(form.value.feeAmount) < 0.01 || Number(form.value.feeAmount) > 9999.99) { ElMessage.warning('报名费必须在0.01至9999.99元之间'); return }
   if ((form.value.announcement || '').trim().length < 10) { ElMessage.warning('请完整填写公告、奖品与开闭场条件'); return }
   saving.value = true
   try { const saved = await saveXyBenefitEvent(form.value); editorOpen.value = false; ElMessage.success('场次已保存'); await load(saved.eventId) }
@@ -198,7 +203,8 @@ onMounted(load)
 <style scoped>
 .notice-config-alert{margin-bottom:20px}
 .benefit-stats{grid-template-columns:repeat(4,minmax(0,1fr))}.benefit-workspace{display:grid;grid-template-columns:220px minmax(0,1fr);overflow:hidden;border:1px solid var(--xy-hairline);border-radius:18px;background:var(--xy-surface)}.event-rail{padding:20px 14px;background:#f4f8f7;border-right:1px solid var(--xy-hairline)}.rail-head{padding:0 6px 14px}.rail-head h3,.detail-head h3,.panel-title h4{margin:0;color:var(--xy-ink)}.rail-head p,.detail-head p,.panel-title p{margin:5px 0 0;color:var(--xy-ink-3);font-size:12px}.event-list{display:flex;flex-direction:column;gap:8px}.event-item{display:flex;flex-direction:column;align-items:flex-start;width:100%;padding:13px;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--xy-ink);cursor:pointer;text-align:left}.event-item:hover{background:#eaf3f0}.event-item.active{border-color:#9bd5cb;background:#e0f2ed}.event-date{font-size:15px;font-weight:750}.event-time{margin-top:4px;color:var(--xy-ink-2);font-size:12px}.event-meta{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:9px;color:var(--xy-ink-3);font-size:12px}.rail-empty{padding:18px 8px;color:var(--xy-ink-3);font-size:13px;line-height:1.6}.event-detail{min-width:0;padding:24px}.detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}.detail-kicker{color:var(--xy-primary-deep);font-size:12px;font-weight:700}.detail-head h3{margin-top:5px;font-size:21px}.detail-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}.decision-note{display:flex;align-items:center;gap:9px;margin-top:18px;padding:12px 14px;border-radius:11px;background:#fff6e5;color:#76531c;font-size:13px}.decision-note.confirmed{background:#e7f5ef;color:#176b55}.seat-and-notice{display:grid;grid-template-columns:minmax(500px,1.45fr) minmax(240px,.75fr);gap:20px;margin-top:20px}.seat-panel,.notice-panel{padding:19px;border:1px solid var(--xy-hairline);border-radius:15px}.panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.seat-legend{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:9px;color:var(--xy-ink-3);font-size:11px}.seat-legend span{display:flex;align-items:center;gap:5px}.seat-legend i{width:9px;height:9px;border-radius:3px}.seat-legend .free{background:#dff1ec}.seat-legend .booked{background:#0e9c8e}.seat-legend .pending{background:#e0a24e}.seat-legend .closed{background:#9daca6}.pool-map{margin-top:18px;padding:15px;border-radius:14px;background:#eef5f3}.seat-row{display:grid;grid-template-columns:repeat(9,minmax(32px,1fr));gap:7px}.pool-middle{display:grid;grid-template-columns:42px minmax(260px,1fr) 42px;align-items:stretch;gap:9px;margin:9px 0}.side-seats{display:flex;flex-direction:column;justify-content:space-around;gap:8px}.pool{display:flex;min-height:145px;align-items:center;justify-content:center;flex-direction:column;border:2px solid #82bdb2;border-radius:20px;background:#d9efea;color:#145e55}.pool span{font-size:26px;font-weight:800;letter-spacing:1px}.pool small{margin-top:6px;color:#5e847d;font-size:11px}.map-seat{min-width:32px;height:34px;padding:0;border:1px solid transparent;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}.map-seat.free{background:#f9fcfb;color:#45615b}.map-seat.booked{background:#0e9c8e;color:#f4fbf9}.map-seat.pending{background:#f3dfb7;color:#7b5618}.map-seat.closed{background:#dce3e1;color:#778985}.notice-copy{min-height:136px;margin-top:17px;padding:14px;border-radius:11px;background:#f4f8f7;color:var(--xy-ink-2);font-size:13px;line-height:1.75;white-space:pre-wrap}.fixed-rules{margin:14px 0 0}.fixed-rules div{display:flex;justify-content:space-between;padding:9px 2px;border-bottom:1px solid var(--xy-hairline);font-size:12px}.fixed-rules div:last-child{border-bottom:0}.fixed-rules dt{color:var(--xy-ink-3)}.fixed-rules dd{margin:0;color:var(--xy-ink);font-weight:650}.booking-table{scroll-margin-top:96px;margin-top:22px}.member-cell,.payment-cell{display:flex;flex-direction:column;gap:3px}.member-cell span,.payment-cell span{color:var(--xy-ink-3);font-size:11px}.payment-cell span{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.seat-number{display:inline-grid;width:30px;height:30px;place-items:center;border-radius:9px;background:var(--xy-mint);color:var(--xy-primary-deep)}.detail-empty{display:flex;min-height:480px;align-items:center;justify-content:center;flex-direction:column;color:var(--xy-ink-3);text-align:center}.detail-empty h3{margin:18px 0 5px;color:var(--xy-ink)}.detail-empty p{margin:0;font-size:13px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.fixed-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}.fixed-strip span{padding:10px;border-radius:9px;background:var(--xy-mint);color:var(--xy-ink-2);font-size:12px}.fixed-strip strong{display:block;margin-top:3px;color:var(--xy-primary-deep)}
+.event-price{margin-top:5px;color:var(--xy-primary-deep);font-size:12px;font-weight:700}.fee-editor{display:flex;align-items:center;gap:14px}.fee-editor .el-input-number{width:220px}.fee-editor span{color:var(--xy-ink-3);font-size:12px}.fixed-strip{grid-template-columns:repeat(3,1fr)}
 @media(max-width:1200px){.benefit-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.seat-and-notice{grid-template-columns:1fr}.detail-head{flex-direction:column}.detail-actions{justify-content:flex-start}}
 @media(max-width:820px){.benefit-workspace{grid-template-columns:1fr}.event-rail{border-right:0;border-bottom:1px solid var(--xy-hairline)}.event-list{display:grid;grid-template-columns:repeat(2,1fr)}.event-detail{padding:16px}.seat-panel{overflow-x:auto}.pool-map{min-width:540px}.form-grid,.fixed-strip{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.benefit-stats,.event-list,.form-grid,.fixed-strip{grid-template-columns:1fr}.detail-actions{width:100%}.detail-actions .el-button{margin-left:0}}
+@media(max-width:560px){.benefit-stats,.event-list,.form-grid,.fixed-strip{grid-template-columns:1fr}.fee-editor{align-items:flex-start;flex-direction:column}.fee-editor .el-input-number{width:100%}.detail-actions{width:100%}.detail-actions .el-button{margin-left:0}}
 </style>
