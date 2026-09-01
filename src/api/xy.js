@@ -43,4 +43,5 @@ export const saveXyBenefitEvent = (data) => unwrap(data.eventId
   : request.post('/xy/benefit-events', data))
 export const confirmXyBenefitEvent = (eventId) => unwrap(request.post(`/xy/benefit-events/${encodeURIComponent(eventId)}/confirm`))
 export const cancelXyBenefitEvent = (eventId, reason) => unwrap(request.post(`/xy/benefit-events/${encodeURIComponent(eventId)}/cancel`, { reason }))
+export const deleteXyBenefitEvent = (eventId) => unwrap(request.delete(`/xy/benefit-events/${encodeURIComponent(eventId)}`))
 export const refundXyBenefitBooking = (bookingId, reason) => unwrap(request.post(`/xy/benefit-bookings/${encodeURIComponent(bookingId)}/refund`, { reason }))
