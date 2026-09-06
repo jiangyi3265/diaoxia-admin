@@ -8,6 +8,7 @@
       </div>
       <div class="xy-page-actions">
         <el-button v-hasPermi="['xy:member:edit']" type="primary" @click="editMember()">新建会员</el-button>
+        <el-button v-hasPermi="['xy:member:export']" type="success" plain @click="handleExport">导出 Excel</el-button>
         <el-button :loading="loading" @click="load">刷新名单</el-button>
       </div>
     </section>
@@ -66,11 +67,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, getCurrentInstance, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { deleteXyMember, getXyMemberPlans, getXyMembers, saveXyMember } from '@/api/xy'
 
+const { proxy } = getCurrentInstance()
 const keyword = ref('')
+const appliedKeyword = ref('')
 const members = ref([])
 const plans = ref([])
 const loading = ref(false)
@@ -95,9 +98,18 @@ const statusClass = value => activeStatuses.includes(String(value)) ? 'xy-status
 
 async function load() {
   loading.value = true
-  try { members.value = await getXyMembers(keyword.value) } finally { loading.value = false }
+  try {
+    members.value = await getXyMembers(keyword.value)
+    appliedKeyword.value = keyword.value
+  } finally { loading.value = false }
 }
 function resetSearch() { keyword.value = ''; load() }
+function handleExport() {
+  const now = new Date()
+  const pad = value => String(value).padStart(2, '0')
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`
+  proxy.download('xy/members/export', { keyword: appliedKeyword.value || undefined }, `会员名单_${stamp}.xlsx`)
+}
 function todayText() { const date = new Date(); const offset = date.getTimezoneOffset(); return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10) }
 function editMember(row = {}) {
   memberForm.value = { memberId: row.memberId, nickname: row.nickname || '', mobile: row.mobile || '', grantMembership: !row.memberId, planId: activePlans.value[0]?.planId, membershipStartDate: todayText() }
